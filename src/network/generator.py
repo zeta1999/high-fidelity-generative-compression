@@ -67,6 +67,7 @@ class Generator(nn.Module):
         
         kernel_dim = 3
         filters = [960, 480, 240, 120, 60]
+        self.im_channels = input_dims[0]
         self.n_residual_blocks = n_residual_blocks
         self.sample_noise = sample_noise
         self.noise_dim = noise_dim
@@ -138,7 +139,7 @@ class Generator(nn.Module):
 
         self.conv_block_out = nn.Sequential(
             self.post_pad,
-            nn.Conv2d(filters[-1], 3, kernel_size=(7,7), stride=1),
+            nn.Conv2d(filters[-1], self.im_channels, kernel_size=(7,7), stride=1),
         )
 
 

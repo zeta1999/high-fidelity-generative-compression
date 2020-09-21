@@ -58,6 +58,30 @@ def optimize_compression_loss(compression_loss, amortization_opt, hyperlatent_li
     amortization_opt.zero_grad()
     hyperlatent_likelihood_opt.zero_grad()
 
+def get_dataloaders(args, logger):
+    test_loader = datasets.get_dataloaders(args.dataset,
+                                root=args.dataset_path,
+                                batch_size=args.batch_size,
+                                logger=logger,
+                                mode='validation',
+                                shuffle=True,
+                                normalize=args.normalize_input_image)
+
+    train_loader = datasets.get_dataloaders(args.dataset,
+                                root=args.dataset_path,
+                                batch_size=args.batch_size,
+                                logger=logger,
+                                mode='train',
+                                shuffle=True,
+                                normalize=args.normalize_input_image)
+
+    args.n_data = len(train_loader.dataset)
+    args.image_dims = train_loader.dataset.image_dims
+    logger.info('Training elements: {}'.format(args.n_data))
+    logger.info('Input Dimensions: {}'.format(args.image_dims))
+
+    return args, test_loader, train_loader
+
 def test(args, model, epoch, idx, data, test_data, test_bpp, device, epoch_test_loss, storage, best_test_loss, 
          start_time, epoch_start_time, logger, train_writer, test_writer):
 
@@ -279,7 +303,11 @@ if __name__ == '__main__':
             logger.warning('Should warmstart compression-gan model.')
         args, model, optimizers = utils.load_model(args.warmstart_ckpt, logger, device, 
             model_type=args.model_type, current_args_d=dictify(args), strict=False, prediction=False)
+        args, test_loader, train_loader = get_dataloaders(args, logger)
+
     else:
+
+        args, test_loader, train_loader = get_dataloaders(args, logger)
         model = create_model(args, device, logger, storage, storage_test)
         model = model.to(device)
         amortization_parameters = itertools.chain.from_iterable(
@@ -312,30 +340,8 @@ if __name__ == '__main__':
     logger.info('USING DEVICE {}'.format(device))
     logger.info('USING GPU ID {}'.format(args.gpu))
     logger.info('USING DATASET: {}'.format(args.dataset))
-
-    test_loader = datasets.get_dataloaders(args.dataset,
-                                root=args.dataset_path,
-                                batch_size=args.batch_size,
-                                logger=logger,
-                                mode='validation',
-                                shuffle=True,
-                                normalize=args.normalize_input_image)
-
-    train_loader = datasets.get_dataloaders(args.dataset,
-                                root=args.dataset_path,
-                                batch_size=args.batch_size,
-                                logger=logger,
-                                mode='train',
-                                shuffle=True,
-                                normalize=args.normalize_input_image)
-
-    args.n_data = len(train_loader.dataset)
-    args.image_dims = train_loader.dataset.image_dims
-    logger.info('Training elements: {}'.format(args.n_data))
-    logger.info('Input Dimensions: {}'.format(args.image_dims))
     logger.info('Optimizers: {}'.format(optimizers))
     logger.info('Using device {}'.format(device))
-
     metadata = dict((n, getattr(args, n)) for n in dir(args) if not (n.startswith('__') or 'logger' in n))
     logger.info(metadata)
 
